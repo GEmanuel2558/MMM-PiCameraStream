@@ -12,7 +12,7 @@ Use this module to embed the Raspberry Pi camera feed in your MagicMirror. On a 
 
 ### Preview
 
-![MMM-PiCameraStream local mode](images/mmm-sensehat-dashboard.png)
+![MMM-PiCameraStream local mode](images/mmm-sensehat-dashboard_2.png)
 
 *(Example: Raspberry Pi 5 + Camera Module 2 in `local` mode)*
 

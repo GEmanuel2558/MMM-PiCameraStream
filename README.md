@@ -10,7 +10,11 @@ Displays your Raspberry Pi camera on MagicMirror². The module now supports thre
 
 Use this module to embed the Raspberry Pi camera feed in your MagicMirror. On a Raspberry Pi with a compatible camera, the default "local" mode captures frames using `rpicam-jpeg` and updates the UI periodically without any external HTTP server. Alternatively, you can point it to an HTTP MJPEG or snapshot URL in "stream" or "snapshot" modes.
 
-![screenshot](screenshot.png)
+### Preview
+
+![MMM-PiCameraStream local mode](images/mmm-sensehat-dashboard.png)
+
+*(Example: Raspberry Pi 5 + Camera Module 2 in `local` mode)*
 
 ## Installation
 
@@ -51,7 +55,8 @@ const moduleEntry = {
     height: 480,
     refreshSnapshotInterval: 1000, // ms; used in local & snapshot modes
     showStatus: true,
-    offlineTimeout: 8000 // ms without updates before labeling as Offline
+    offlineTimeout: 8000,         // ms without updates before labeling as Offline
+    captureTimeoutMs: 4000        // max time to wait for rpicam-jpeg in local mode (min 2000ms)
   }
 };
 ```
@@ -65,6 +70,8 @@ const moduleEntry = {
 - `refreshSnapshotInterval` (number): Used in "local" and "snapshot" modes. In "stream" mode this option is ignored.
 - `showStatus` (boolean): Show a small Online/Offline/Connecting label under the image.
 - `offlineTimeout` (number): Consider the feed Offline if there’s no update within this many milliseconds.
+- `offlineTimeout` (number): Consider the feed Offline if there’s no update within this many milliseconds.
+- `captureTimeoutMs` (number): Local mode only. Max time to wait for `rpicam-jpeg` per capture. Default 4000 ms; minimum enforced is 2000 ms.
 
 ### Local camera capture (default mode)
 
@@ -81,20 +88,21 @@ Example config (no URL):
         height: 480,
         refreshSnapshotInterval: 1000,
         showStatus: true,
-        offlineTimeout: 8000
+        offlineTimeout: 8000,
+        captureTimeoutMs: 4000
       }
     }
 
 ### Modes
 
 - Local mode (default):
-  - Behavior: helper invokes `rpicam-jpeg` to capture a JPEG and pushes it to the frontend as a data URL at each interval.
+    - Behavior: helper invokes `rpicam-jpeg` to capture a JPEG and pushes it to the frontend as a data URL at each interval.
 
 - Snapshot mode:
-  - Behavior: helper polls the configured `url` and pushes frames to the frontend as data URLs.
+    - Behavior: helper polls the configured `url` and pushes frames to the frontend as data URLs.
 
 - Stream mode:
-  - Behavior: frontend `<img>` points directly at the MJPEG `url`.
+    - Behavior: frontend `<img>` points directly at the MJPEG `url`.
 
 ### Status behavior
 
@@ -108,16 +116,16 @@ You can add multiple instances with different URLs and sizes:
 ```js
 // Example: two instances inside your modules array
 [
-  {
-    module: "MMM-PiCameraStream",
-    position: "top_center",
-    config: { url: "http://127.0.0.1:8080/camera.jpg", refreshSnapshotInterval: 1000, width: 480, height: 360 }
-  },
-  {
-    module: "MMM-PiCameraStream",
-    position: "bottom_left",
-    config: { url: "http://garagepi.local:8080/snapshot.jpg", refreshSnapshotInterval: 1000, width: 400, height: 300 }
-  }
+    {
+        module: "MMM-PiCameraStream",
+        position: "top_center",
+        config: { url: "http://127.0.0.1:8080/camera.jpg", refreshSnapshotInterval: 1000, width: 480, height: 360 }
+    },
+    {
+        module: "MMM-PiCameraStream",
+        position: "bottom_left",
+        config: { url: "http://garagepi.local:8080/snapshot.jpg", refreshSnapshotInterval: 1000, width: 400, height: 300 }
+    }
 ]
 ```
 
@@ -152,36 +160,36 @@ MIT
 **No image at all on the MagicMirror UI**
 
 - Open the `config.url` directly in a browser on the Pi (or another device on the same network).
-  - If you don’t see a live stream or a static image, the camera service itself is not working yet.
+    - If you don’t see a live stream or a static image, the camera service itself is not working yet.
 - Double-check that the camera is:
-  - Enabled in `raspi-config` (`Interface Options` → `Camera` on older images, or the new camera stack on Bullseye/Bookworm).
-  - Using the right cable (especially on Raspberry Pi Zero boards).
-  - Firmly seated in both the camera and Pi connectors.
+    - Enabled in `raspi-config` (`Interface Options` → `Camera` on older images, or the new camera stack on Bullseye/Bookworm).
+    - Using the right cable (especially on Raspberry Pi Zero boards).
+    - Firmly seated in both the camera and Pi connectors.
 
 **Stream URL works in a browser, but not in MMM-PiCameraStream**
 
 - Make sure the URL in `config.js` matches *exactly* what works in your browser (protocol, hostname, port, path).
 - If you’re using snapshot mode (`refreshSnapshotInterval > 0`):
-  - The URL must return a single image (e.g. JPEG), not an HTML page.
-  - Try increasing `offlineTimeout` to 8000–12000 ms for slow cameras.
+    - The URL must return a single image (e.g. JPEG), not an HTML page.
+    - Try increasing `offlineTimeout` to 8000–12000 ms for slow cameras.
 - Check your MagicMirror logs:
-  - Start MagicMirror in a terminal and look for lines starting with `[MMM-PiCameraStream]`.
-  - Errors like “HTTP 404” or “Request timeout” usually indicate a bad path or a slow/unreachable camera service.
+    - Start MagicMirror in a terminal and look for lines starting with `[MMM-PiCameraStream]`.
+    - Errors like “HTTP 404” or “Request timeout” usually indicate a bad path or a slow/unreachable camera service.
 
 **Image appears, but is slow or choppy**
 
 - For MJPEG streams, reduce the camera’s resolution or frame rate in the streaming software (e.g. `motion`, `libcamera-vid`, or your chosen streamer).
 - On older Raspberry Pi models:
-  - Prefer lower resolutions (e.g. 720p) for smoother performance.
-  - Avoid running multiple heavy modules in the same region.
+    - Prefer lower resolutions (e.g. 720p) for smoother performance.
+    - Avoid running multiple heavy modules in the same region.
 
 **Module shows “Offline” most of the time**
 
 - Increase `offlineTimeout` so the helper waits longer before timing out.
 - Verify that your camera service doesn’t require authentication or HTTPS if you’re using a plain HTTP URL.
 - If the Pi is under heavy CPU load, try:
-  - Disabling other resource-heavy modules.
-  - Reducing the snapshot interval (e.g. 2000–5000 ms instead of 500 ms).
+    - Disabling other resource-heavy modules.
+    - Reducing the snapshot interval (e.g. 2000–5000 ms instead of 500 ms).
 
 If you’re still stuck, include:
 - Your `MMM-PiCameraStream` config block,
